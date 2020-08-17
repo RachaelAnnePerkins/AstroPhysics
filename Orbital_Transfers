@@ -1,0 +1,272 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Dec 16 19:47:19 2019
+
+@author: racha
+"""
+
+#16/12/19 - Orbital transfer for Earth centric systems by Rachael Perkins
+#17/12/19 - The only thing you need to change would be the ra, rb, at, OPCangle 
+import math as m
+from astropy.table import Table
+f = open('Orbital_Transfer_Results.txt', 'w')
+#==============================================================================
+#==============================================================================
+
+#Input Variables
+ra       = 6621.0          #Radius of orbit A (km)
+rb       = 42164.0         #Radius of orbit B (km)
+at       = 28500.0         #Semi-major axis of transfer ellipse (OTB) (km)
+const    = 631.3481        #sqrt(GM) for Earth centric orbit (km)
+OPCangle = 35              #Angle between plane change (degrees)
+
+e        = 1 - (ra/at)     #eccentricity
+e2       = e**2            #e squared
+ahohmann = (ra + rb) / 2   #Semi-major axis for Hohmann transfer ellipse (km)
+
+#==============================================================================
+#==============================================================================
+
+#Basic Functions
+
+#Calculates the velocity of circular orbit at radius r(km)
+def Vcircle (r):
+    Vcirc = const * (r**-0.5)
+    return(Vcirc)
+
+#Calculates the velocity of transfer ellipse at radius r(km) with semi-major axis a(km)    
+def Vellipse (r,a):
+    Vellipse = const * m.sqrt((2/r)-(1/a))
+    return(Vellipse)
+    
+#Calculates the Delta V of a tangential burn(km/s)
+def tangential (vi, vf):
+    DeltaV = vf - vi
+    return(DeltaV)
+
+#Calculates the nu needed for OTB a and radius in km    
+def nu (a, rb):
+    v = m.acos(((a*(1-e2)/rb) - 1)/e)
+    return (v)
+
+#Calculates the theta needed for the OTB transfer
+def Theta (v):
+    theta = m.atan((e*m.sin(v)) / (1 + (e*m.cos(v))))
+    return(theta)
+
+#Calculates the Delta V for an Orbital Transfer Plane at a certain point
+def OPC (vi,deg):
+    ang   = (deg / 360) * (2*m.pi)
+    DeltV = 2 * vi * m.sin(ang/2)
+    return(DeltV)
+
+#Calculates the combined OPC at a certain point    
+def combined_OPC (vi, vf, deg):
+    ang = (deg / 360) * (2*m.pi)
+    DeltaV = m.sqrt((vi**2)+(vf**2)-(2*vi*vf*m.cos(ang)))
+    return(DeltaV)
+
+#Calculates the value of E needed for TOF OTB
+def E_TOF(v):
+    x = ((m.sqrt(1 - e2)) * (m.sin(v)))
+    y = (e + m.cos(v))
+    
+    Ea = m.atan(x / y)
+    
+    while Ea < 0 :
+        Ea = Ea + m.pi
+        
+    return(Ea)
+        
+#==============================================================================
+#==============================================================================
+    
+#One Tangent Burn
+
+#a = transfer ellipse semi-major axis
+def OTB(ra, rb, a):
+    
+    DeltaVA = tangential(Vcircle(ra), Vellipse(ra,a))
+    
+    VtranB = Vellipse(rb,a) #velocity of transfer ellipse at B
+    VcircB = Vcircle(rb)     #velocity of circular orbit at B
+    theta = Theta(nu(a, rb))  #angle needed for non tangential burn
+    
+    DeltaVB = m.sqrt((VcircB**2)+(VtranB**2)-(2*VcircB*VtranB*m.cos(theta)))
+    
+    DeltaV_Total = DeltaVA + DeltaVB
+    
+    return(DeltaV_Total)    
+    
+#print(OTB(ra,rb,at))
+    
+def OTB_TOF(a, rb):
+    E = E_TOF(nu(a, rb))
+    TOF_sec = ((const**-1) * (a**(3/2)) * (E - (e * m.sin(E))))
+    TOF = TOF_sec / 3600
+    return(TOF)
+
+print('The total Delta V for the one tangent burn (OTB) is ' + str(OTB(ra, rb, at)) + ' km/s')
+print('The time of flight for the one tangent burn (OTB) is ' + str(OTB_TOF(at, rb)) + ' hours')
+
+#f.write('The total Delta V for the one tangent burn (OTB) is ' + str(OTB(ra, rb, at)) + ' km/s' + '\n')
+#f.write('The time of flight for the one tangent burn (OTB) is ' + str(OTB_TOF(at, rb)) + ' hours' + '\n')
+#f.write('\n')
+
+#==============================================================================
+#==============================================================================
+#==============================================================================
+
+#Two Tangent Burn
+
+#a = semi-major axis of hohmann transfer ellipse
+def Hohmann(ra, rb, a):
+    
+    DeltaVA = tangential(Vcircle(ra), Vellipse(ra,a))
+    DeltaVB = tangential(Vellipse(rb,a),Vcircle(rb))
+    
+    DeltaV_Total = DeltaVA + DeltaVB
+    
+    return(DeltaV_Total)
+    
+#print(Hohmann(ra,rb,ahohmann))
+
+def TOF_Hohmann(a):
+    T = 2 * m.pi * (m.sqrt(a**3) / const)
+    TOF_sec = T / 2
+    TOF = TOF_sec / 3600
+    return(TOF)
+
+print('The total Delta V for the Hohmann transfer is ' + str(Hohmann(ra, rb, ahohmann)) + ' km/s')
+print('The time of flight for the Hohmann transfer is ' + str(TOF_Hohmann(ahohmann)) + ' hours')
+#f.write('The total delta V for the Hohmann transfer is ' + str(Hohmann(ra, rb, ahohmann)) + ' km/s' + '\n')
+#f.write('The time of flight for the Hohmann transfer is ' + str(TOF_Hohmann(ahohmann)) + ' hours' + '\n')
+#f.write('\n')
+#==============================================================================
+#==============================================================================
+#==============================================================================
+
+#Orbital Plane Change (Simple transfer - in sequence with hohmann transfer)
+
+# a = semi-major axis of hohmann transfer ellipse
+#r_OPC = radius at which the OPC occurs
+#OPCangle = angle in degrees between the two planes
+def OPC_Simple(ra, rb, a, r_OPC, OPCangle):
+    
+    DeltaV = Hohmann(ra,rb,a) + OPC(Vcircle(r_OPC),OPCangle)
+    
+    return(DeltaV)
+
+    
+#Total Delta V for OPC at A
+print('The total delta V for the simple orbital plane change at point A is ' + str(OPC_Simple(ra,rb,ahohmann,ra,OPCangle)) + ' km/s')
+#f.write('The total Delta V for the simple orbital plane change if it occured at point A is ' + str(OPC_Simple(ra,rb,ahohmann,ra,OPCangle)) + ' km/s' + '\n')
+
+#Total Delta V for OPC at B
+print('The total Delta V for the simple orbital plane change if it occured at point B is ' + str(OPC_Simple(ra,rb,ahohmann,rb,OPCangle)) + ' km/s')   
+#f.write('The total delta V for the simple orbital plane change at point B is ' + str(OPC_Simple(ra,rb,ahohmann,rb,OPCangle)) + ' km/s' + '\n')
+#f.write('\n')
+#==============================================================================
+#==============================================================================
+#==============================================================================
+
+#Combined Orbital Plane transfer
+#r_combined is the radius of where the combined manouver occurs
+def OPC_Combined(r_combined, r_tangential, deg):
+    
+    combined = combined_OPC(Vcircle(r_combined),Vellipse(r_combined,ahohmann),deg)
+    
+    if r_combined > r_tangential :
+        tangent = tangential(Vcircle(r_tangential), Vellipse(r_tangential,ahohmann))
+        DeltaV = combined + tangent
+    else:
+        tangent = tangential(Vellipse(r_tangential,ahohmann),Vcircle(r_tangential))
+        DeltaV = combined + tangent    
+    
+    return(DeltaV)
+
+#Combined Obital Plane Transfer at A
+print('The total Delta V for the combined orbital plane transfer if it occured at A is ' + str(OPC_Combined(ra,rb,OPCangle)) + ' km/s')
+#f.write('The total delta V for the combined orbital plane transfer at A is ' + str(OPC_Combined(ra,rb,OPCangle)) + ' km/s' + '\n')
+
+#Combined Obital Plane Transfer at B
+print('The total delta V for the combined orbital plane transfer if it occured at B is ' + str(OPC_Combined(rb,ra,OPCangle)) + ' km/s')
+#f.write('The total delta V for the combined orbital plane transfer at B is ' + str(OPC_Combined(rb,ra,OPCangle)) + ' km/s' + '\n')
+#f.write('\n')
+#==============================================================================
+#==============================================================================
+#==============================================================================
+
+#Transfer Ellipse
+
+def Tran_ell(ra, rb):
+    DeltaV = Vcircle(ra) - Vcircle(rb)
+    return(DeltaV)
+    
+print('The total Delta V for the transfer ellipse is ' + str(Tran_ell(ra, rb)) + ' km/s')
+#f.write('The total delta V for the transfer ellipse is ' + str(Tran_ell(ra, rb)) + ' km/s' + '\n')  
+
+
+data_rows = [('OBT',     float("{0:.2f}".format(OTB(ra, rb, at))),           float("{0:.2f}".format(OTB_TOF(at, rb)))),
+             ('Hohmann', float("{0:.2f}".format(Hohmann(ra, rb, ahohmann))), float("{0:.2f}".format(TOF_Hohmann(ahohmann))))
+             ]
+t = Table(rows=data_rows, names=('Name', 'T Delta V (km/s)', 'TOF (Hours)'))
+
+print(t)
+#f.write(str(t))
+
+
+#==============================================================================
+#==============================================================================
+#==============================================================================
+
+#Question 5 - Extra Question
+
+#Burn 1 - Co-planar manoeuver placing the satellite into a transfer orbit with an 
+#apogee much higher than the final orbit (i.e. semi-major axis of initial transfer ellipse is 50,000 km).
+
+at1 = 50000
+
+burn_1 = tangential(Vcircle(ra),Vellipse(ra,at1))
+#print(burn_1)
+
+TOF_1 = TOF_Hohmann(at1)
+#print(TOF_Hohmann(at1))
+
+#==============================================================================
+#Burn 2 - Combined plane change manoeuver at apogee of transfer orbit (this places the
+#satellite in a second transfer orbit which is coplanar with the final orbit and has a perigee
+#altitude equal to the altitude of the final orbit).
+
+#no angle between planes was given so I'm assuming it is still 35 degrees
+r_ellipse = (2 * at1) - ra
+at2 = ((2 * at1)+ rb) / 2
+
+burn_2 = combined_OPC(Vellipse(r_ellipse,at1), Vellipse(r_ellipse,at2), OPCangle)
+#print(burn_2)
+
+TOF_2 = TOF_Hohmann(at2)
+#print(TOF_Hohmann(at2))
+
+#==============================================================================
+#Burn 3 - After reaching perigee of the second transfer orbit, another coplanar maneuver places
+#the satellite into the final orbit.
+
+burn_3 = tangential(Vcircle(rb), Vellipse(rb,at2))
+#print(burn_3)
+
+#==============================================================================
+
+Total_Delta_V = burn_1 + burn_2 + burn_3
+print('The total Delta V for the bi ellipse transfer is: ' + str(Total_Delta_V) + ' km/s')
+#f.write('\n')
+#f.write('The Total Delta V for the bi-ellipse transfer is ' + str(Total_Delta_V) + ' km/s')
+
+# =============================================================================
+# data_rows = [('OBT',     OTB(ra, rb, at))
+#              ('Hohmann', Hohmann(ra, rb, ahohmann))
+#              ('Bi-Ellipse', Total_Delta_V)
+#             ]
+# 
+# t2 = Table(rows=data_rows, names=('Name', 'T Delta V (km/s)'))
+# =============================================================================
