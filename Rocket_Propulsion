@@ -1,0 +1,244 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Apr 14 18:10:57 2020
+
+@author: racha
+"""
+#Rocket Propulsion Homework Code
+#Written by Rachael Perkins
+
+import numpy as np
+from matplotlib import pyplot as plt
+
+f = open("Rocket_Propulsion_HW.txt", "w")
+f.write("Rachael Perkins - Assignment 2 PH711 (Lowry)" + '\n')
+f.write("These are my FINAL ANSWERS ONLY. Please see the written work / program (attached below) for full workings" + '\n')
+
+#~~~Part 1 - Ideal Expansion~~~
+
+#Consider a rocket engine running with the following fixed parameteres
+#operating in a constant ambient pressure, P_a
+
+#===Fixed parameters===
+dm_dt = 100    #kg/s - Mass Flow Rate
+gamma = 1.2    #ratio of spec. heats at constant P and V
+W     = 24     #molecular weight of propellant used
+T_c   = 3600   #K - Chamber Temperature
+P_c   = 5      #MPa - Chamber Pressure
+P_a   = 0.05   #Mpa - Ambient Pressure
+A_t   = 0.0345 #m^2 - throat area
+R     = 8314.4621 #J/kg.mol.K (Universal Gas Constant)
+#=======================
+
+#1A   - Calculate:
+#1Ai  - the pressure at the throat, P_t: 
+#1Aii - the temperature at the throat, T_t:
+
+def Press_throat(P_c, gamma):
+    P_t = P_c * ((2/(gamma + 1))**(gamma/(gamma - 1)))
+    return(P_t)
+    
+def Temp_throat(T_c, gamma):
+    T_t = T_c * (2/(gamma + 1))
+    return(T_t)
+    
+print('The pressure at the throat for the fixed parameters is: ' + str(round(Press_throat(P_c, gamma),2)) + ' MPa')
+print('The temperature at the throat for the fixed parameters is: ' + str(int(Temp_throat(T_c, gamma))) + ' K')
+f.write('\n' + 'Question 1a:' + '\n')
+f.write('The pressure at the throat for the fixed parameters is: ' + str(round(Press_throat(P_c, gamma),2)) + ' MPa' + '\n')
+f.write('The temperature at the throat for the fixed parameters is: ' + str(int(Temp_throat(T_c, gamma))) + ' K' + '\n')
+
+
+#1B - Determine the corresponding potimised exit plane area, A_e:
+
+def Opt_exit_plane(A_t, gamma, P_c, P_e):
+    
+    a = gamma + 1
+    b = gamma - 1
+    c = (2 / (a))
+    d = ((2 * gamma)/ b)
+ 
+    thrust_coeff = np.sqrt(gamma * d * (c**(a/b)) * (1 - ((P_e/P_c)**(b/gamma))))
+    A_e = (A_t * gamma * (c**(a/b)) * ((P_c/P_e)**(1/gamma)) * (1/thrust_coeff))
+    return(A_e)
+  
+print(Opt_exit_plane(A_t, gamma, P_c, (10*P_a)))
+print(Opt_exit_plane(A_t, gamma, P_c, (0.4*P_a)))    
+print('The corresponding optized exit plane area, Ae, is: ' + str(round(Opt_exit_plane(A_t, gamma, P_c, P_a),4)) + ' m^2') 
+f.write('\n' + 'Question 1b:' + '\n')
+f.write('The corresponding optimized exit plane area, Ae, is: ' + str(round(Opt_exit_plane(A_t, gamma, P_c, P_a),4)) + ' m^2' + '\n')   
+
+#1C - The following equation is used to determine the total thrust experienced by the rocket in the presence of an atmosphere:    
+
+def Total_thrust(dm_dt, gamma, R, W, T_c, P_a, ratio, P_c):
+    
+    P_e = P_a / ratio
+    
+    ve = np.sqrt(2 * (gamma/(gamma - 1)) * (R/W) * T_c * (1 - ((P_e/P_c)**((gamma-1)/gamma))))
+    
+    F = (dm_dt * ve) + (0.4096*((P_e * 1000000) - (P_a * 1000000)))
+    
+    return(F)
+    
+print('F (0.1) with fixed Ae = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 0.1, P_c))) + ' N')    
+print('F (1.0) with fixed Ae = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 1, P_c))) + ' N')
+print('F (2.5) with fixed Ae = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 2.5, P_c))) + ' N')
+f.write('\n' + 'Question 1c:' + '\n')
+f.write('F (0.1) = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 0.1, P_c))) + ' N' + '\n' )
+f.write('F (1.0) = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 1, P_c))) + ' N' + '\n' )
+f.write('F (2.5) = ' + str(int(Total_thrust(dm_dt, gamma, R, W, T_c, P_a, 2.5, P_c))) + ' N' + '\n' )
+
+
+#1D - Same as question 1c but with an changing Ae:
+
+def Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, ratio, P_c):
+    
+    P_e = P_a / ratio
+    a = gamma + 1
+    b = gamma - 1
+    c = (2 / (a))
+    d = ((2 * gamma)/ b)
+    
+    ve = np.sqrt(2 * (gamma/(gamma - 1)) * (R/W) * T_c * (1 - ((P_e/P_c)**((gamma-1)/gamma))))
+    thrust_coeff = np.sqrt(gamma * d * (c**(a/b)) * (1 - ((P_e/P_c)**(b/gamma))))
+    Ae = (A_t * gamma * (c**(a/b)) * ((P_c/P_e)**(1/gamma)) * (1/thrust_coeff)) 
+    
+    F = (dm_dt * ve) + (Ae*((P_e * 1000000) - (P_a * 1000000)))
+    
+    return(F)
+
+print('F (0.1) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 0.1, P_c))) + ' N')    
+print('F (1.0) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 1, P_c))) + ' N')
+print('F (2.5) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 2.5, P_c))) + ' N')   
+f.write('\n' + 'Question 1d:' + '\n')
+f.write('F (0.1) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 0.1, P_c))) + ' N' + '\n' )
+f.write('F (1.0) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 1, P_c))) + ' N' + '\n' )
+f.write('F (2.5) = ' + str(int(Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, 2.5, P_c))) + ' N' + '\n' )
+
+#graph between the range of 0.1 - 2.5 for the Thrust over Pa/Pe
+#x = np.linspace(0.1, 2.5)
+#plt.plot(x,Total_thrust(dm_dt, gamma, R, W, T_c, P_a, x, P_c), 'b')
+#plt.plot(x,Total_thrust_Ae(dm_dt, gamma, R, W, T_c, P_a, x, P_c), 'r')
+#plt.xlabel('Pa/Pe')
+#plt.ylabel('Thrust (N)')
+#plt.show
+#plt.savefig('Question_1C.png')
+
+
+#~~~Part 2 - Fundamental Particles and Characteristic Variables~~~
+
+#The following measurements were made in a sea level test of a solid propellant rocket motor:
+
+#===Parameters===
+
+T     = 40       #Burn time in seconds
+M_i   = 1210     #Initial mass in kg
+M_a   = 215      #Final mass in kg
+ave_F = 62250    #N - average thrust
+P_c2  = 7        #MPa - chamber pressure
+P_e2  = 0.07     #MPa - nozzel exit pressure
+T_d   = 0.085    #m - nozzel throat diameter
+E_d   = 0.2703   #m - nozzel exit diameter
+P_sl  = 0.101325 #MPa - Pressure at sea level
+
+P_1000  = 0.0898  #MPa - Pressure at 1,000 m
+P_25000 = 0.00255 #MPa - Pressure at 25,000 m
+
+#2A - Calculate the average mass loss rate dm/dt:
+
+def Ave_mlr(M_2, M_1, T_2, T_1):
+    x = (M_2 - M_1)/(T_2 - T_1)
+    return(x)
+    
+print('The average mass loss rate is: ' + str(abs(Ave_mlr(M_a, M_i, T, 0))) + ' kg per second')
+f.write('\n' + 'Question 2a:' + '\n')
+f.write('The average mass loss rate is: ' + str(abs(Ave_mlr(M_a, M_i, T, 0))) + ' kg per second' + '\n')
+
+#2B - assuming gamma = 1.2 Calculate:
+#i - Exhaust velocity ve
+#ii - characteristic velocity c*
+#iii - characteristic thrust coefficient COF
+#iv - specific impulse at sea level Isp
+
+def ve2(F, m, De, Pe, Pc):
+    
+    Ae = np.pi * ((De/2)**2)
+    Pe1 = Pe * 1000000
+    Pc1 = Pc * 1000000
+    
+    ans = (F - (Ae*((Pe1 - Pc1)))) / m
+    return(ans)
+  
+print('The calculated exhaust velocity is: ' + str(int(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl))) + ' m per s')
+f.write('\n' + 'Question 2b:' + '\n')
+f.write('The calculated exhaust velocity is: ' + str(int(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl))) + ' m per s' + '\n')
+ 
+#characteristic velocity c*
+
+def c_star(Pc, Dt, m):
+    
+    At = np.pi * ((Dt/2)**2)
+    Pc1 = Pc * 1000000
+    
+    ans = (Pc1 * At)/(m)
+    return(ans)
+    
+print('The calculated characteristic velocity is: ' + str(int(c_star(P_c2, T_d, abs(Ave_mlr(M_i, M_a, 0, T))))) + ' m per s')
+f.write('The calculated characteristic velocity is: ' + str(int(c_star(P_c2, T_d, abs(Ave_mlr(M_i, M_a, 0, T))))) + ' m per s' + '\n')
+
+#characteristic thrust coefficient 
+
+def COF(gamma, P_e, P_c):
+    
+    a = gamma - 1
+    b = gamma + 1
+    c = b/a
+    
+    ans = np.sqrt(gamma * ((2* gamma)/a) * ((2/b)**c) * (1 - ((P_e/P_c)**(a/gamma))))
+    return(ans)
+    
+print('The calculated characteristic thrust coefficient is: ' + str(round(COF(gamma, P_e2, P_c2),2)) + ' s')   
+f.write('The calculated characteristic thrust coefficient is: ' + str(round(COF(gamma, P_e2, P_c2),2)) + ' s' + '/n')
+
+#specific impulse:
+
+def Impulse(F, g, m):
+    ans = F/(g*m)
+    return(ans)
+    
+print('The Specific Impulse at sea level was calculated as: ' + str(round(Impulse(ave_F, 9.81, abs(Ave_mlr(M_a, M_i, T, 0))),2)) + ' s')
+f.write('The Specific Impulse at sea level was calculated as: ' + str(round(Impulse(ave_F, 9.81, abs(Ave_mlr(M_a, M_i, T, 0))),2)) + ' s' + '\n')
+
+#Q2c - Determine the effective velocity and specific impulse for 1000m and 25000m
+
+def eff_v(ve, Pe, Po, De, m):
+    Ae = np.pi * ((De/2)**2)
+    Pe2 = Pe * 1000000
+    Po2 = Po * 1000000
+    ans = ve + ((Ae*(Pe2-Po2))/m)
+    return(ans)
+
+#Specific impulse at a height
+
+def I_sp(F_sl, m, g, De, Pe, Po, alt):
+    
+    Ae = np.pi * ((De/2)**2)
+    Pe1 = Pe * 1000000
+    Po1 = Po * 1000000
+    F = F_sl + (Ae*(Pe1-Po1))
+    
+    go = ((g * ((6371000)**2)) / ((6371000 + alt)**2))
+    
+    ans = F/(go*m)
+    return(ans)
+
+print('V_eff (1000m) was calculated as: ' + str(round(eff_v(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl), P_e2, P_1000, E_d,abs(Ave_mlr(M_i, M_a, 0, T))),2 )) + ' m per s')
+print('V_eff (25000m) was calculated as: ' + str(round(eff_v(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl), P_e2, P_25000, E_d,abs(Ave_mlr(M_i, M_a, 0, T))),2 )) + ' m per s')
+print('Isp(1000m) was calculated as: ' + str(int(I_sp(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)),9.81,E_d,P_e2,P_1000,1000))) + ' s')
+print('Isp(25000m) was calculated as: ' + str(int(I_sp(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)),9.81,E_d,P_e2,P_25000,25000))) + ' s')
+
+f.write('\n' + 'Question 2c:' + '\n')
+f.write('V_eff (1000m) was calculated as: ' + str(round(eff_v(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl), P_e2, P_1000, E_d,abs(Ave_mlr(M_i, M_a, 0, T))),2 )) + ' m per s' + '\n')
+f.write('V_eff (25000m) was calculated as: ' + str(round(eff_v(ve2(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)), E_d, P_e2, P_sl), P_e2, P_25000, E_d,abs(Ave_mlr(M_i, M_a, 0, T))),2 )) + ' m per s' + '\n')
+f.write('Isp(1000m) was calculated as: ' + str(int(I_sp(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)),9.81,E_d,P_e2,P_1000,1000))) + ' s' + '\n')
+f.write('Isp(25000m) was calculated as: ' + str(int(I_sp(ave_F,abs(Ave_mlr(M_i, M_a, 0, T)),9.81,E_d,P_e2,P_25000,25000))) + ' s' + '\n')
